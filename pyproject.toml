@@ -1,0 +1,25 @@
+[project]
+name = "ketcher-mcp-server"
+version = "1.0.0"
+description = "MCP server for Ketcher chemical structure editor"
+authors = [{name = "lunnynight", email = "noreply@github.com"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "mcp>=0.9.0",
+    "rdkit>=2023.9.1",
+    "pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["ketcher_mcp"]

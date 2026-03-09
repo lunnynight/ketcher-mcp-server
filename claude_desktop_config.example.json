@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ketcher": {
+      "command": "python",
+      "args": [
+        "-m",
+        "ketcher_mcp.server"
+      ],
+      "env": {}
+    }
+  }
+}

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ketcher MCP 测试界面</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .content { padding: 30px; }
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .tool-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .tool-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
+        .tool-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        .tool-card p {
+            color: #6c757d;
+            line-height: 1.6;
+        }
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 600;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-weight: 600;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .result pre {
+            background: #f1f3f5;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .result img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .error {
+            background: #fff5f5;
+            border-left-color: #e53e3e;
+            color: #c53030;
+        }
+        .success {
+            background: #f0fff4;
+            border-left-color: #38a169;
+            color: #2f855a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Ketcher MCP 测试界面</h1>
+            <p>化学结构编辑器 MCP 服务器</p>
+        </div>
+
+        <div class="content">
+            <div class="tool-grid">
+                <div class="tool-card" onclick="showTest('validate')">
+                    <h3>✅ 验证 SMILES</h3>
+                    <p>检查 SMILES 字符串是否有效</p>
+                </div>
+                <div class="tool-card" onclick="showTest('properties')">
+                    <h3>📊 分子属性</h3>
+                    <p>计算分子量、LogP、TPSA 等属性</p>
+                </div>
+                <div class="tool-card" onclick="showTest('image')">
+                    <h3>🖼️ 生成图像</h3>
+                    <p>从 SMILES 生成分子结构图</p>
+                </div>
+                <div class="tool-card" onclick="showTest('convert')">
+                    <h3>🔄 格式转换</h3>
+                    <p>SMILES ↔ MOL ↔ InChI</p>
+                </div>
+            </div>
+
+            <div class="test-section" id="testSection" style="display:none;">
+                <h2 id="testTitle">测试功能</h2>
+                <div id="testContent"></div>
+                <div id="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const examples = {
+            ethanol: 'CCO',
+            aspirin: 'CC(=O)Oc1ccccc1C(=O)O',
+            caffeine: 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C',
+            water: 'O'
+        };
+
+        function showTest(type) {
+            const section = document.getElementById('testSection');
+            const title = document.getElementById('testTitle');
+            const content = document.getElementById('testContent');
+            const result = document.getElementById('result');
+
+            section.style.display = 'block';
+            result.innerHTML = '';
+
+            switch(type) {
+                case 'validate':
+                    title.textContent = '✅ 验证 SMILES';
+                    content.innerHTML = `
+                        <div class="input-group">
+                            <label>SMILES 字符串</label>
+                            <input type="text" id="smiles" value="${examples.ethanol}" placeholder="例如: CCO">
+                        </div>
+                        <button onclick="validateSmiles()">验证</button>
+                    `;
+                    break;
+                case 'properties':
+                    title.textContent = '📊 分子属性';
+                    content.innerHTML = `
+                        <div class="input-group">
+                            <label>SMILES 字符串</label>
+                            <input type="text" id="smiles" value="${examples.aspirin}" placeholder="例如: CC(=O)Oc1ccccc1C(=O)O">
+                        </div>
+                        <button onclick="getProperties()">获取属性</button>
+                    `;
+                    break;
+                case 'image':
+                    title.textContent = '🖼️ 生成图像';
+                    content.innerHTML = `
+                        <div class="input-group">
+                            <label>SMILES 字符串</label>
+                            <input type="text" id="smiles" value="${examples.caffeine}" placeholder="例如: CN1C=NC2=C1C(=O)N(C(=O)N2C)C">
+                        </div>
+                        <div class="input-group">
+                            <label>格式</label>
+                            <select id="format">
+                                <option value="png">PNG</option>
+                                <option value="svg">SVG</option>
+                            </select>
+                        </div>
+                        <button onclick="generateImage()">生成图像</button>
+                    `;
+                    break;
+                case 'convert':
+                    title.textContent = '🔄 格式转换';
+                    content.innerHTML = `
+                        <div class="input-group">
+                            <label>SMILES 字符串</label>
+                            <input type="text" id="smiles" value="${examples.ethanol}" placeholder="例如: CCO">
+                        </div>
+                        <div class="input-group">
+                            <label>转换为</label>
+                            <select id="convertType">
+                                <option value="mol">MOL 文件</option>
+                                <option value="inchi">InChI</option>
+                                <option value="inchikey">InChIKey</option>
+                            </select>
+                        </div>
+                        <button onclick="convert()">转换</button>
+                    `;
+                    break;
+            }
+        }
+
+        function showResult(html, type = 'result') {
+            const result = document.getElementById('result');
+            result.className = `result ${type}`;
+            result.innerHTML = html;
+        }
+
+        function showLoading() {
+            showResult('<div class="loading"></div> 处理中...', 'result');
+        }
+
+        // 注意：这些函数需要实际的 MCP 客户端来调用
+        // 这里只是演示界面，实际调用需要后端支持
+
+        function validateSmiles() {
+            const smiles = document.getElementById('smiles').value;
+            showLoading();
+            setTimeout(() => {
+                showResult(`
+                    <h3>验证结果</h3>
+                    <p>⚠️ 这是演示界面。要实际测试，请运行：</p>
+                    <pre>cd ~/ketcher-mcp-server
+/opt/homebrew/bin/python3.11 test_client.py</pre>
+                    <p>或者使用 Python 脚本直接调用 MCP 服务器。</p>
+                `, 'result');
+            }, 500);
+        }
+
+        function getProperties() {
+            validateSmiles();
+        }
+
+        function generateImage() {
+            validateSmiles();
+        }
+
+        function convert() {
+            validateSmiles();
+        }
+
+        // 页面加载时显示说明
+        window.onload = function() {
+            showResult(`
+                <h3>📖 使用说明</h3>
+                <p>这是一个演示界面。要实际测试 Ketcher MCP 服务器，请使用以下方法：</p>
+                <h4>方法 1: Python 测试客户端</h4>
+                <pre>cd ~/ketcher-mcp-server
+/opt/homebrew/bin/python3.11 test_client.py</pre>
+                <h4>方法 2: 直接调用</h4>
+                <pre>from mcp import ClientSession
+# 连接到 MCP 服务器并调用工具</pre>
+                <p>点击上方的卡片查看不同功能的测试界面。</p>
+            `, 'success');
+        };
+    </script>
+</body>
+</html>
