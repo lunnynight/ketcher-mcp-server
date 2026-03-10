@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""
+Molecule Terminal Viewer - 终端分子查看器
+支持多种显示模式的分子结构可视化工具
+"""
+
+import argparse
+import base64
+import io
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    from rdkit import Chem
+    from rdkit.Chem import AllChem, Draw, Descriptors, rdMolDescriptors
+    from PIL import Image
+    RDKIT_AVAILABLE = True
+except ImportError as e:
+    print(f"❌ 缺少依赖: {e}")
+    print("请运行: pip install rdkit pillow")
+    sys.exit(1)
+
+
+# ASCII 字符集（从暗到亮）
+ASCII_CHARS = "@%#*+=-:. "
+
+
+def image_to_ascii(image, width=100):
+    """将图像转换为 ASCII 艺术"""
+    aspect_ratio = image.height / image.width
+    new_height = int(width * aspect_ratio * 0.55)
+    image = image.resize((width, new_height))
+    image = image.convert("L")
+
+    pixels = list(image.getdata())
+    ascii_str = ""
+
+    for i, pixel in enumerate(pixels):
+        pixel = 255 - pixel  # 反转亮度
+        ascii_str += ASCII_CHARS[pixel * len(ASCII_CHARS) // 256]
+        if (i + 1) % width == 0:
+            ascii_str += "\n"
+
+    return ascii_str
+
+
+def display_info(mol, smiles):
+    """显示分子基本信息"""
+    print(f"\n{'='*80}")
+    print(f"  🧪 分子信息")
+    print(f"{'='*80}")
+    print(f"  SMILES:     {smiles}")
+    print(f"  规范SMILES: {Chem.MolToSmiles(mol)}")
+    print(f"  分子式:     {rdMolDescriptors.CalcMolFormula(mol)}")
+    print(f"  分子量:     {Descriptors.MolWt(mol):.2f} g/mol")
+    print(f"  LogP:       {Descriptors.MolLogP(mol):.2f}")
+    print(f"  TPSA:       {Descriptors.TPSA(mol):.2f} Ų")
+    print(f"  原子数:     {mol.GetNumAtoms()}")
+    print(f"  重原子数:   {mol.GetNumHeavyAtoms()}")
+    print(f"  键数:       {mol.GetNumBonds()}")
+    print(f"  环数:       {rdMolDescriptors.CalcNumRings(mol)}")
+    print(f"  芳香环数:   {rdMolDescriptors.CalcNumAromaticRings(mol)}")
+    print(f"  氢键供体:   {Descriptors.NumHDonors(mol)}")
+    print(f"  氢键受体:   {Descriptors.NumHAcceptors(mol)}")
+    print(f"  可旋转键:   {Descriptors.NumRotatableBonds(mol)}")
+    print(f"{'='*80}\n")
+
+
+def display_ascii_art(mol, width=80, invert=False):
+    """显示 ASCII 艺术"""
+    img = Draw.MolToImage(mol, size=(800, 600))
+    if invert:
+        img = Image.eval(img, lambda x: 255 - x)
+    ascii_art = image_to_ascii(img, width)
+    print(ascii_art)
+
+
+def display_iterm2(mol):
+    """在 iTerm2 中显示图片"""
+    img = Draw.MolToImage(mol, size=(800, 600))
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    b64_data = base64.b64encode(buffer.getvalue()).decode()
+    print(f"\033]1337;File=inline=1:{b64_data}\a")
+
+
+def save_image(mol, output_path, size=(800, 600), auto_open=True):
+    """保存为图片"""
+    img = Draw.MolToImage(mol, size=size)
+    img.save(output_path)
+    print(f"✅ 图片已保存: {output_path}")
+
+    if auto_open:
+        if sys.platform == "darwin":
+            subprocess.run(["open", output_path], check=False)
+        elif sys.platform == "linux":
+            subprocess.run(["xdg-open", output_path], check=False)
+        elif sys.platform == "win32":
+            os.startfile(output_path)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Molecule Terminal Viewer - 终端分子查看器",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+显示模式:
+  info      - 显示分子详细信息
+  ascii     - ASCII 艺术风格（默认）
+  iterm2    - iTerm2 内联图像
+  image     - 保存为图片并打开
+  all       - 显示所有信息
+
+示例:
+  %(prog)s "CCO"                                    # 乙醇（ASCII）
+  %(prog)s "CCO" -m info                            # 显示信息
+  %(prog)s "CCO" -m all                             # 显示所有
+  %(prog)s "CC(=O)Oc1ccccc1C(=O)O" -m ascii -w 120  # 阿司匹林（宽屏）
+  %(prog)s "CN1C=NC2=C1C(=O)N(C(=O)N2C)C" -m iterm2 # 咖啡因（iTerm2）
+  %(prog)s "CCO" -m image -o ethanol.png            # 保存为图片
+        """
+    )
+
+    parser.add_argument("smiles", help="SMILES 字符串")
+    parser.add_argument(
+        "-m", "--mode",
+        choices=["info", "ascii", "iterm2", "image", "all"],
+        default="ascii",
+        help="显示模式（默认: ascii）"
+    )
+    parser.add_argument(
+        "-w", "--width",
+        type=int,
+        default=80,
+        help="ASCII 艺术宽度（默认: 80）"
+    )
+    parser.add_argument(
+        "-o", "--output",
+        help="输出图片路径"
+    )
+    parser.add_argument(
+        "--no-open",
+        action="store_true",
+        help="保存图片后不自动打开"
+    )
+    parser.add_argument(
+        "--invert",
+        action="store_true",
+        help="反转 ASCII 艺术颜色"
+    )
+
+    args = parser.parse_args()
+
+    # 解析 SMILES
+    mol = Chem.MolFromSmiles(args.smiles)
+    if mol is None:
+        print(f"❌ 无效的 SMILES: {args.smiles}")
+        sys.exit(1)
+
+    # 根据模式显示
+    if args.mode in ["info", "all"]:
+        display_info(mol, args.smiles)
+
+    if args.mode in ["ascii", "all"]:
+        display_ascii_art(mol, args.width, args.invert)
+
+    if args.mode == "iterm2":
+        display_iterm2(mol)
+
+    if args.mode == "image" or args.output:
+        output_path = args.output or f"molecule_{args.smiles[:20].replace('/', '_')}.png"
+        save_image(mol, output_path, auto_open=not args.no_open)
+
+
+if __name__ == "__main__":
+    main()
